@@ -16,7 +16,7 @@ from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from dotenv import load_dotenv
 
-from auth import get_current_user
+from auth import create_token, get_current_user
 from gateway_manager import gateway_manager
 
 load_dotenv()
@@ -87,6 +87,26 @@ async def _proxy_stream(user: dict, path: str, body: dict) -> AsyncGenerator[byt
 async def health():
     """Health check for the orchestrator itself."""
     return {"status": "ok", "gateways": len(gateway_manager._gateways)}
+
+
+@app.post("/auth/login")
+async def login(request: Request):
+    """Login — returns a JWT for the given username."""
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON body")
+
+    username = body.get("username", "").strip().lower()
+    if not username:
+        raise HTTPException(status_code=400, detail="Username is required")
+
+    try:
+        token = create_token(username)
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Unknown user")
+
+    return {"token": token, "user": username}
 
 
 @app.post("/api/chat")
