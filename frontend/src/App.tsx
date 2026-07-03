@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { login, logout, isAuthenticated } from './api';
 import { Chat } from './components/Chat';
 
@@ -90,8 +90,32 @@ export default function App() {
         </button>
       </header>
       <main className="app-main">
-        <Chat />
+        <ErrorBoundary>
+          <Chat />
+        </ErrorBoundary>
       </main>
     </div>
   );
+}
+
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: string | null }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { error: null };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { error: error.message };
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{ padding: 40, color: 'var(--text-primary)', textAlign: 'center' }}>
+          <h2>Something went wrong</h2>
+          <p style={{ color: 'var(--text-muted)', marginTop: 8 }}>{this.state.error}</p>
+          <button onClick={() => window.location.reload()} style={{ marginTop: 16, padding: '8px 20px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}>Reload</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }
