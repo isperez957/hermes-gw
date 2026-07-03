@@ -89,7 +89,7 @@ async def health():
     return {"status": "ok", "gateways": len(gateway_manager._gateways)}
 
 
-@app.post("/auth/login")
+@app.post("/api/auth/login")
 async def login(request: Request):
     """Login — returns a JWT for the given username."""
     try:
