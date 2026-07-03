@@ -12,9 +12,11 @@ import logging
 import os
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Optional
 
 import httpx
+from dotenv import dotenv_values
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +30,7 @@ STARTUP_GRACE_PERIOD = 15.0  # seconds to wait for gateway to come up
 class Gateway:
     port: int
     process: asyncio.subprocess.Process
+    api_key: str = ""
     last_used: float = field(default_factory=time.monotonic)
 
     def touch(self) -> None:
@@ -67,18 +70,18 @@ class GatewayManager:
                 pass
             self._reaper_task = None
 
-        # Kill all running gateways
         for user_id, gw in list(self._gateways.items()):
             await self._kill_gateway(user_id, gw)
         self._gateways.clear()
         logger.info("GatewayManager stopped, all gateways killed")
 
-    async def get_or_spawn(self, user_id: str, profile: str) -> int:
-        """Return the port for a user's gateway, spawning it if necessary.
+    def get_gateway(self, user_id: str) -> Optional[Gateway]:
+        """Return the Gateway object for a user, or None."""
+        return self._gateways.get(user_id)
 
-        Also touches the gateway to reset its idle timer.
-        """
-        gw = self._gateways.get(user_id)
+    async def get_or_spawn(self, user_id: str, profile: str) -> int:
+        """Return the port for a user's gateway, spawning it if necessary."""
+        gw = self.get_gateway(user_id)
 
         if gw is not None and await self._is_healthy(gw):
             gw.touch()
@@ -86,17 +89,14 @@ class GatewayManager:
 
         # Gateway missing or unhealthy — (re)spawn
         async with self._lock:
-            # Double-check under lock in case another task just spawned it
-            gw = self._gateways.get(user_id)
+            gw = self.get_gateway(user_id)
             if gw is not None and await self._is_healthy(gw):
                 gw.touch()
                 return gw.port
 
-            # Clean up dead gateway if present
             if gw is not None:
                 await self._kill_gateway(user_id, gw)
 
-            # Allocate port and spawn
             port = self._next_port
             self._next_port += 1
             gw = await self._spawn_gateway(profile, port)
@@ -109,6 +109,17 @@ class GatewayManager:
         env = os.environ.copy()
         env["API_SERVER_PORT"] = str(port)
 
+        # Read API_SERVER_KEY from profile's .env
+        hermes_home = os.environ.get("HERMES_HOME", "/home/ec2-user/.hermes")
+        profile_env = Path(hermes_home) / "profiles" / profile / ".env"
+        api_key = ""
+        if profile_env.exists():
+            vals = dotenv_values(profile_env)
+            api_key = vals.get("API_SERVER_KEY", "")
+            logger.info(f"Read API key from {profile_env}")
+        else:
+            logger.warning(f"Profile .env not found: {profile_env}")
+
         proc = await asyncio.create_subprocess_exec(
             "hermes", "-p", profile, "gateway", "run",
             env=env,
@@ -116,16 +127,14 @@ class GatewayManager:
             stderr=asyncio.subprocess.PIPE,
         )
 
-        gw = Gateway(port=port, process=proc)
+        gw = Gateway(port=port, process=proc, api_key=api_key)
 
-        # Wait for gateway to be healthy
         deadline = time.monotonic() + STARTUP_GRACE_PERIOD
         while time.monotonic() < deadline:
             if await self._is_healthy(gw):
                 return gw
             await asyncio.sleep(0.5)
 
-        # Gateway didn't become healthy in time — read stderr for diagnostics
         stderr_data = b""
         try:
             stderr_data = await asyncio.wait_for(proc.stderr.read(), timeout=2.0) if proc.stderr else b""
@@ -164,7 +173,7 @@ class GatewayManager:
                 gw.process.kill()
                 await gw.process.wait()
         except ProcessLookupError:
-            pass  # Already dead
+            pass
         except Exception as e:
             logger.warning(f"Error killing gateway for user={user_id}: {e}")
 
@@ -174,10 +183,7 @@ class GatewayManager:
             await asyncio.sleep(60)
             for user_id, gw in list(self._gateways.items()):
                 if gw.idle_seconds > IDLE_TIMEOUT_SECONDS:
-                    logger.info(
-                        f"Reaping idle gateway for user={user_id} "
-                        f"(idle {gw.idle_seconds:.0f}s)"
-                    )
+                    logger.info(f"Reaping idle gateway for user={user_id} (idle {gw.idle_seconds:.0f}s)")
                     await self._kill_gateway(user_id, gw)
                     del self._gateways[user_id]
 

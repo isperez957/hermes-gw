@@ -40,23 +40,32 @@ app = FastAPI(title="hermes-gw", version="0.1.0", lifespan=lifespan)
 # Proxy helpers
 # ---------------------------------------------------------------------------
 
-async def _get_gateway_url(user: dict) -> str:
-    """Resolve the user's gateway port and return its base URL."""
+async def _get_gateway_info(user: dict) -> dict:
+    """Resolve the user's gateway port and API key, return base URL and auth header."""
     user_id = user["user_id"]
     profile = user["profile"]
     try:
-        port = await gateway_manager.get_or_spawn(user_id, profile)
+        gw = gateway_manager.get_gateway(user_id)
+        if gw is None or not await gateway_manager._is_healthy(gw):
+            port = await gateway_manager.get_or_spawn(user_id, profile)
+            gw = gateway_manager.get_gateway(user_id)
+        else:
+            gw.touch()
     except RuntimeError as e:
         raise HTTPException(status_code=503, detail=str(e))
-    return f"http://127.0.0.1:{port}"
+    return {
+        "base_url": f"http://127.0.0.1:{gw.port}",
+        "api_key": gw.api_key if gw else "",
+    }
 
 
 async def _proxy_get(user: dict, path: str, params: Optional[dict] = None) -> dict:
     """Proxy a GET request to the user's Hermes gateway."""
-    base_url = await _get_gateway_url(user)
-    url = f"{base_url}{path}"
+    info = await _get_gateway_info(user)
+    url = f"{info['base_url']}{path}"
+    headers = {"Authorization": f"Bearer {info['api_key']}"} if info["api_key"] else {}
     async with httpx.AsyncClient(timeout=30.0) as client:
-        resp = await client.get(url, params=params)
+        resp = await client.get(url, params=params, headers=headers)
         if resp.status_code >= 400:
             raise HTTPException(status_code=resp.status_code, detail=resp.text)
         return resp.json()
@@ -67,10 +76,11 @@ async def _proxy_stream(user: dict, path: str, body: dict) -> AsyncGenerator[byt
 
     Reads the SSE stream from the gateway and yields raw bytes to the client.
     """
-    base_url = await _get_gateway_url(user)
-    url = f"{base_url}{path}"
+    info = await _get_gateway_info(user)
+    url = f"{info['base_url']}{path}"
+    headers = {"Authorization": f"Bearer {info['api_key']}"} if info["api_key"] else {}
     async with httpx.AsyncClient(timeout=120.0) as client:
-        async with client.stream("POST", url, json=body) as resp:
+        async with client.stream("POST", url, json=body, headers=headers) as resp:
             if resp.status_code >= 400:
                 error_body = await resp.aread()
                 raise HTTPException(status_code=resp.status_code, detail=error_body.decode(errors="replace"))
