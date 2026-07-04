@@ -578,3 +578,37 @@ body {
     max-width: 90%;
   }
 }
+
+/* === Reasoning block === */
+.reasoning-block {
+  margin-bottom: 10px;
+  border: 1px solid rgba(108, 99, 255, 0.2);
+  border-radius: var(--radius-sm);
+  background: rgba(108, 99, 255, 0.06);
+  overflow: hidden;
+}
+
+.reasoning-summary {
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--accent);
+  cursor: pointer;
+  user-select: none;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+}
+
+.reasoning-summary:hover {
+  background: rgba(108, 99, 255, 0.1);
+}
+
+.reasoning-content {
+  padding: 8px 12px 10px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  border-top: 1px solid rgba(108, 99, 255, 0.1);
+  white-space: pre-wrap;
+  max-height: 300px;
+  overflow-y: auto;
+}

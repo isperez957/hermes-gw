@@ -15,6 +15,7 @@ export function Chat() {
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [streamContent, setStreamContent] = useState('');
+  const [streamReasoning, setStreamReasoning] = useState('');
   const [loadingSessions, setLoadingSessions] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -23,11 +24,15 @@ export function Chat() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const streamContentRef = useRef('');
+  const streamReasoningRef = useRef('');
 
-  // Keep ref in sync with state
+  // Keep refs in sync with state
   useEffect(() => {
     streamContentRef.current = streamContent;
   }, [streamContent]);
+  useEffect(() => {
+    streamReasoningRef.current = streamReasoning;
+  }, [streamReasoning]);
 
   // Load sessions on mount
   useEffect(() => {
@@ -66,6 +71,7 @@ export function Chat() {
   const handleSelectSession = (sessionId: string) => {
     setActiveSessionId(sessionId);
     setStreamContent('');
+    setStreamReasoning('');
     setStreaming(false);
     loadMessages(sessionId);
     setSidebarOpen(false);
@@ -77,6 +83,7 @@ export function Chat() {
     setActiveSessionId(null);
     setMessages([]);
     setStreamContent('');
+    setStreamReasoning('');
     setStreaming(false);
   };
 
@@ -92,7 +99,9 @@ export function Chat() {
     setInput('');
     setStreaming(true);
     setStreamContent('');
+    setStreamReasoning('');
     streamContentRef.current = '';
+    streamReasoningRef.current = '';
 
     // Add user message optimistically
     const userMsg: Message = {
@@ -137,6 +146,10 @@ export function Chat() {
                 streamContentRef.current += delta.content;
                 setStreamContent((prev) => prev + delta.content);
               }
+              if (delta?.reasoning_content) {
+                streamReasoningRef.current += delta.reasoning_content;
+                setStreamReasoning((prev) => prev + delta.reasoning_content);
+              }
 
               // Track session if provided
               if (data.session_id) {
@@ -171,18 +184,21 @@ export function Chat() {
         }
       }
 
-      // Add assistant message using ref for final content
+      // Add assistant message using refs for final content
       const finalContent = streamContentRef.current || buffer;
+      const finalReasoning = streamReasoningRef.current || undefined;
       const assistantMsg: Message = {
         id: `temp-${Date.now()}-assistant`,
         session_id: newSessionId || '',
         role: 'assistant',
         content: finalContent || '(empty response)',
+        reasoning: finalReasoning,
         created_at: new Date().toISOString(),
       };
 
       setMessages((prev) => [...prev, assistantMsg]);
       setStreamContent('');
+      setStreamReasoning('');
 
       // Reload messages from server for this session
       if (newSessionId) {
@@ -317,13 +333,19 @@ export function Chat() {
               {streaming && (
                 <div className="message-row assistant">
                   <div className="message-bubble streaming-cursor">
-                    {streamContent || (
+                    {streamReasoning && (
+                      <details open className="reasoning-block">
+                        <summary className="reasoning-summary">🧠 Pensando...</summary>
+                        <div className="reasoning-content">{streamReasoning}</div>
+                      </details>
+                    )}
+                    {streamContent || (!streamReasoning && (
                       <div className="loading-indicator">
                         <div className="dot" />
                         <div className="dot" />
                         <div className="dot" />
                       </div>
-                    )}
+                    ))}
                   </div>
                 </div>
               )}
