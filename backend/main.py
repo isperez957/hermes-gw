@@ -78,24 +78,11 @@ async def _proxy_stream(user: dict, path: str, body: dict, session_id: Optional[
     Reads the SSE stream from the gateway and yields raw bytes to the client.
     If session_id is provided, passes it as X-Hermes-Session-Id header for context continuity.
     """
-    import glob as _glob
     info = await _get_gateway_info(user)
     url = f"{info['base_url']}{path}"
     headers = {"Authorization": f"Bearer {info['api_key']}"} if info["api_key"] else {}
     if session_id:
         headers["X-Hermes-Session-Id"] = session_id
-
-    # Scan available skills for this profile
-    hermes_home = os.environ.get("HERMES_HOME", "/home/ec2-user/.hermes")
-    skills_dir = os.path.join(hermes_home, "profiles", user["profile"], "skills")
-    skill_names = []
-    for skill_md in _glob.glob(f"{skills_dir}/**/SKILL.md", recursive=True):
-        name = os.path.basename(os.path.dirname(skill_md))
-        skill_names.append(name)
-    if skill_names:
-        import json as _json
-        yield f"event: hermes.skills\ndata: {_json.dumps({'skills': sorted(skill_names)})}\n\n".encode()
-
     async with httpx.AsyncClient(timeout=120.0) as client:
         async with client.stream("POST", url, json=body, headers=headers) as resp:
             if resp.status_code >= 400:

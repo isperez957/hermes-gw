@@ -4,31 +4,31 @@ import { Message } from '../api';
 
 interface Props {
   message: Message;
-  skills?: string[];
+  toolsUsed?: string[];
 }
 
-export function MessageBubble({ message, skills }: Props) {
+export function MessageBubble({ message, toolsUsed }: Props) {
   const isUser = message.role === 'user';
   const [reasoningOpen, setReasoningOpen] = useState(false);
-  const [skillsOpen, setSkillsOpen] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
 
   return (
     <div className={`message-row ${isUser ? 'user' : 'assistant'}`}>
       <div className="message-bubble">
-        {!isUser && skills && skills.length > 0 && (
-          <div className="skills-indicator">
+        {!isUser && toolsUsed && toolsUsed.length > 0 && (
+          <div className="tools-indicator">
             <span
-              className="skills-icon"
-              onMouseEnter={() => setSkillsOpen(true)}
-              onMouseLeave={() => setSkillsOpen(false)}
-              title={skills.join(', ')}
+              className="tools-icon"
+              onMouseEnter={() => setToolsOpen(true)}
+              onMouseLeave={() => setToolsOpen(false)}
+              title={toolsUsed.join(', ')}
             >
-              🧰
+              🛠️ {toolsUsed.length}
             </span>
-            {skillsOpen && (
-              <div className="skills-tooltip">
-                {skills.map((s) => (
-                  <span key={s} className="skill-tag">{s}</span>
+            {toolsOpen && (
+              <div className="tools-tooltip">
+                {toolsUsed.map((t) => (
+                  <span key={t} className="tool-tag">{t}</span>
                 ))}
               </div>
             )}

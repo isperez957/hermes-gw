@@ -613,25 +613,28 @@ body {
   overflow-y: auto;
 }
 
-/* === Skills indicator === */
-.skills-indicator {
+/* === Tools indicator === */
+.tools-indicator {
   position: relative;
   display: inline-block;
   margin-bottom: 6px;
 }
 
-.skills-icon {
+.tools-icon {
   cursor: help;
-  font-size: 13px;
+  font-size: 12px;
   opacity: 0.5;
   transition: opacity 0.2s;
+  background: var(--accent-muted);
+  padding: 2px 8px;
+  border-radius: 10px;
 }
 
-.skills-icon:hover {
+.tools-icon:hover {
   opacity: 1;
 }
 
-.skills-tooltip {
+.tools-tooltip {
   position: absolute;
   bottom: 100%;
   left: 0;
@@ -648,7 +651,7 @@ body {
   box-shadow: var(--shadow);
 }
 
-.skill-tag {
+.tool-tag {
   font-size: 11px;
   background: var(--accent-muted);
   color: var(--accent);

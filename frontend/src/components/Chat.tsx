@@ -19,7 +19,7 @@ export function Chat() {
   const [loadingSessions, setLoadingSessions] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [skills, setSkills] = useState<string[]>([]);
+  const [toolsUsed, setToolsUsed] = useState<string[]>([]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -103,6 +103,7 @@ export function Chat() {
     setStreamReasoning('');
     streamContentRef.current = '';
     streamReasoningRef.current = '';
+    setToolsUsed([]);
 
     // Add user message optimistically
     const userMsg: Message = {
@@ -148,8 +149,8 @@ export function Chat() {
               const data = JSON.parse(payload);
 
               // Custom events
-              if (currentEvent === 'hermes.skills' && data.skills) {
-                setSkills(data.skills);
+              if (currentEvent === 'hermes.tool.progress' && data.tool) {
+                setToolsUsed((prev) => prev.includes(data.tool) ? prev : [...prev, data.tool]);
                 currentEvent = '';
                 continue;
               }
@@ -343,7 +344,7 @@ export function Chat() {
           ) : (
             <>
               {messages.map((msg) => (
-                <MessageBubble key={msg.id} message={msg} skills={msg.role === 'assistant' ? skills : []} />
+                <MessageBubble key={msg.id} message={msg} toolsUsed={msg.role === 'assistant' ? toolsUsed : []} />
               ))}
               {streaming && (
                 <div className="message-row assistant">
