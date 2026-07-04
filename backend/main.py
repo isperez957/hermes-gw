@@ -14,6 +14,7 @@ from typing import AsyncGenerator, Optional
 
 import httpx
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from dotenv import load_dotenv
 
@@ -36,6 +37,15 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="hermes-gw", version="0.1.0", lifespan=lifespan)
+
+# CORS — allow frontend (any origin for now, CloudFront or ALB direct)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # ---------------------------------------------------------------------------
 # Proxy helpers
@@ -77,7 +87,9 @@ async def _proxy_stream(user: dict, path: str, body: dict, session_id: Optional[
 
     Reads the SSE stream from the gateway and yields raw bytes to the client.
     If session_id is provided, passes it as X-Hermes-Session-Id header for context continuity.
+    Injects keepalive comments every 15s to prevent CloudFront/ALB timeouts.
     """
+    import asyncio as _asyncio
     info = await _get_gateway_info(user)
     url = f"{info['base_url']}{path}"
     headers = {"Authorization": f"Bearer {info['api_key']}"} if info["api_key"] else {}
@@ -92,8 +104,17 @@ async def _proxy_stream(user: dict, path: str, body: dict, session_id: Optional[
             gw_session_id = resp.headers.get("X-Hermes-Session-Id", "")
             if gw_session_id:
                 yield f"data: {{\"session_id\": \"{gw_session_id}\"}}\n\n".encode()
-            async for chunk in resp.aiter_bytes():
-                yield chunk
+            # Stream chunks with keepalive injection
+            KEEPALIVE = b": keepalive\n\n"
+            stream = resp.aiter_bytes()
+            while True:
+                try:
+                    chunk = await _asyncio.wait_for(stream.__anext__(), timeout=15.0)
+                    yield chunk
+                except _asyncio.TimeoutError:
+                    yield KEEPALIVE
+                except StopAsyncIteration:
+                    break
 
 
 # ---------------------------------------------------------------------------
