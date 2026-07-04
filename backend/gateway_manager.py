@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 GATEWAY_BASE_PORT = 8642
 IDLE_TIMEOUT_SECONDS = 30 * 60  # 30 minutes
 HEALTH_CHECK_TIMEOUT = 5.0  # seconds
-STARTUP_GRACE_PERIOD = 15.0  # seconds to wait for gateway to come up
+STARTUP_GRACE_PERIOD = 30.0  # seconds to wait for gateway to come up
 
 
 @dataclass
@@ -156,6 +156,12 @@ class GatewayManager:
             f"within {STARTUP_GRACE_PERIOD}s. Stderr: {stderr_data.decode(errors='replace')[:500]}"
         )
         await self._kill_gateway("unknown", gw)
+        # Clean up stale lock files so next spawn doesn't need a new port
+        hermes_home = os.environ.get("HERMES_HOME", "/home/ec2-user/.hermes")
+        for f in ["gateway.lock", "gateway.pid"]:
+            lock_file = Path(hermes_home) / "profiles" / profile / f
+            if lock_file.exists():
+                lock_file.unlink()
         raise RuntimeError(f"Gateway for profile {profile} failed to start on port {port}")
 
     async def _is_healthy(self, gw: Gateway) -> bool:
