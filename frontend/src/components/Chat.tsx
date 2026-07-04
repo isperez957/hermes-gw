@@ -203,7 +203,7 @@ export function Chat() {
       // Add assistant message using refs for final content, cleaning tool output noise
       const finalContent = streamContentRef.current || buffer;
       const cleanContent = finalContent
-        .replace(/\n?\s*\{.*"(?:bytes_written|output|exit_code|files_modified|resolved_path|lint|dirs_created)".*\}\s*\n?/g, '\n')
+        .replace(/\n?\s*\{[^}]*"(?:bytes_written|output|exit_code|files_modified|resolved_path|lint|dirs_created|error)"[\s\S]*?\}\s*\n?/g, '\n')
         .replace(/\n{3,}/g, '\n\n')
         .trim();
       const finalReasoning = streamReasoningRef.current || undefined;
