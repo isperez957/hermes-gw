@@ -1,0 +1,93 @@
+name: Deploy Shared Skills
+
+on:
+  push:
+    paths:
+      - 'profiles/shared/skills/**'
+  workflow_dispatch:  # permitir ejecución manual
+
+jobs:
+  deploy-skills:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::649091762015:role/terraform-ci-oidc
+          aws-region: eu-west-1
+
+      - name: Deploy skills to EC2
+        run: |
+          if [ ! -d "profiles/shared/skills" ]; then
+            echo "No shared skills to deploy"
+            exit 0
+          fi
+
+          echo "Skills to deploy:"
+          find profiles/shared/skills -name "SKILL.md" -exec echo "  - {}" \;
+
+          # Pack skills as base64 tarball (SSM-friendly)
+          TARBALL=$(tar cz profiles/shared/skills 2>/dev/null | base64 -w0)
+
+          # Target profiles
+          PROFILES="user-isaac user-miguel user-pablo"
+          HERMES_HOME="/home/ec2-user/.hermes"
+
+          # Build the deploy script
+          DEPLOY_SCRIPT="set -e
+          echo '=== Deploying shared skills ==='
+          echo \"\$TARBALL\" | base64 -d | tar xz -C /tmp
+          if [ ! -d /tmp/profiles/shared/skills ]; then
+            echo 'ERROR: skills dir not found after unpack'
+            exit 1
+          fi
+          echo 'Skills to install:'
+          find /tmp/profiles/shared/skills -name SKILL.md -exec echo '  {}' \;
+          for profile in \$PROFILES; do
+            SKILLS_DIR=\"\$HERMES_HOME/profiles/\$profile/skills\"
+            mkdir -p \"\$SKILLS_DIR\"
+            echo \"  → Installing to \$profile...\"
+            cp -rn /tmp/profiles/shared/skills/* \"\$SKILLS_DIR/\"
+            echo \"  ✓ Done: \$profile\"
+          done
+          rm -rf /tmp/profiles
+          echo '=== Deploy complete ==='
+          "
+
+          # Send to EC2 via SSM
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids i-0c0f8dd5d194ceaf2 \
+            --document-name "AWS-RunShellScript" \
+            --comment "Deploy shared skills from GitHub Actions" \
+            --parameters "commands=[\"$DEPLOY_SCRIPT\"]" \
+            --query "Command.CommandId" --output text)
+
+          echo "SSM Command: $COMMAND_ID"
+
+          # Wait for completion (max 2 min)
+          for i in $(seq 1 12); do
+            sleep 10
+            STATUS=$(aws ssm list-command-invocations \
+              --command-id "$COMMAND_ID" \
+              --details \
+              --query "CommandInvocations[0].Status" --output text)
+            echo "  Status ($i): $STATUS"
+            if [ "$STATUS" = "Success" ]; then
+              echo "✓ Skills deployed successfully"
+              exit 0
+            elif [ "$STATUS" = "Failed" ] || [ "$STATUS" = "TimedOut" ]; then
+              echo "✗ Deployment failed"
+              aws ssm list-command-invocations \
+                --command-id "$COMMAND_ID" \
+                --details \
+                --query "CommandInvocations[0].CommandPlugins[0].Output" --output text
+              exit 1
+            fi
+          done
+          echo "✗ Timeout waiting for deployment"
+          exit 1
