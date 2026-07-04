@@ -19,6 +19,7 @@ export function Chat() {
   const [loadingSessions, setLoadingSessions] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [skills, setSkills] = useState<string[]>([]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -133,12 +134,26 @@ export function Chat() {
         const lines = buffer.split('\n');
         buffer = lines.pop() || '';
 
+        let currentEvent = '';
+
         for (const line of lines) {
+          if (line.startsWith('event: ')) {
+            currentEvent = line.slice(7).trim();
+            continue;
+          }
           if (line.startsWith('data: ')) {
             const payload = line.slice(6).trim();
             if (payload === '[DONE]') continue;
             try {
               const data = JSON.parse(payload);
+
+              // Custom events
+              if (currentEvent === 'hermes.skills' && data.skills) {
+                setSkills(data.skills);
+                currentEvent = '';
+                continue;
+              }
+              currentEvent = '';
 
               // OpenAI-compatible format: choices[0].delta.content
               const delta = data.choices?.[0]?.delta;
@@ -328,7 +343,7 @@ export function Chat() {
           ) : (
             <>
               {messages.map((msg) => (
-                <MessageBubble key={msg.id} message={msg} />
+                <MessageBubble key={msg.id} message={msg} skills={msg.role === 'assistant' ? skills : []} />
               ))}
               {streaming && (
                 <div className="message-row assistant">
