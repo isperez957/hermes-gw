@@ -172,8 +172,8 @@ async def list_sessions(
 ):
     """List chat sessions from the user's Hermes gateway."""
     data = await _proxy_get(user, "/api/sessions", params={"limit": limit, "offset": offset})
-    # Hermes gateway returns {"sessions": [...], "total": N, ...} — extract array
-    return data.get("sessions", data) if isinstance(data, dict) else data
+    # Hermes gateway returns {"object":"list", "data":[...], ...} — extract array
+    return data.get("data", data) if isinstance(data, dict) else data
 
 
 @app.get("/api/sessions/{session_id}/messages")
@@ -183,8 +183,8 @@ async def get_session_messages(
 ):
     """Get message history for a specific session."""
     data = await _proxy_get(user, f"/api/sessions/{session_id}/messages")
-    # Hermes gateway returns {"session_id": "...", "messages": [...]} — extract array
-    return data.get("messages", data) if isinstance(data, dict) else data
+    # Hermes gateway returns {"object":"list", "session_id":"...", "data":[...]} — extract array
+    return data.get("data", data) if isinstance(data, dict) else data
 
 
 # ---------------------------------------------------------------------------
