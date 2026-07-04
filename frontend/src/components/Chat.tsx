@@ -131,14 +131,20 @@ export function Chat() {
 
         for (const line of lines) {
           if (line.startsWith('data: ')) {
+            const payload = line.slice(6).trim();
+            if (payload === '[DONE]') continue;
             try {
-              const data = JSON.parse(line.slice(6));
+              const data = JSON.parse(payload);
 
-              if (data.type === 'chunk') {
-                const chunk = data.content || '';
-                streamContentRef.current += chunk;
-                setStreamContent((prev) => prev + chunk);
-              } else if (data.type === 'session') {
+              // OpenAI-compatible format: choices[0].delta.content
+              const delta = data.choices?.[0]?.delta;
+              if (delta?.content) {
+                streamContentRef.current += delta.content;
+                setStreamContent((prev) => prev + delta.content);
+              }
+
+              // Track session if provided
+              if (data.session_id) {
                 newSessionId = data.session_id;
                 setActiveSessionId(newSessionId);
                 loadSessions();
@@ -152,18 +158,22 @@ export function Chat() {
 
       // Flush remaining buffer
       if (buffer.startsWith('data: ')) {
-        try {
-          const data = JSON.parse(buffer.slice(6));
-          if (data.type === 'chunk') {
-            const chunk = data.content || '';
-            streamContentRef.current += chunk;
-            setStreamContent((prev) => prev + chunk);
-          } else if (data.type === 'session') {
-            newSessionId = data.session_id;
-            setActiveSessionId(newSessionId);
-            loadSessions();
-          }
-        } catch { /* ignore */ }
+        const payload = buffer.slice(6).trim();
+        if (payload !== '[DONE]') {
+          try {
+            const data = JSON.parse(payload);
+            const delta = data.choices?.[0]?.delta;
+            if (delta?.content) {
+              streamContentRef.current += delta.content;
+              setStreamContent((prev) => prev + delta.content);
+            }
+            if (data.session_id) {
+              newSessionId = data.session_id;
+              setActiveSessionId(newSessionId);
+              loadSessions();
+            }
+          } catch { /* ignore */ }
+        }
       }
 
       // Add assistant message using ref for final content
