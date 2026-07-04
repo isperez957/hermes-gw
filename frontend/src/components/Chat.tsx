@@ -151,6 +151,9 @@ export function Chat() {
               // Custom events
               if (currentEvent === 'hermes.tool.progress' && data.tool) {
                 setToolsUsed((prev) => prev.includes(data.tool) ? prev : [...prev, data.tool]);
+                // Reset content — tool output noise is arriving, only keep post-tool text
+                streamContentRef.current = '';
+                setStreamContent('');
                 currentEvent = '';
                 continue;
               }
