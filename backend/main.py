@@ -109,9 +109,10 @@ async def _proxy_stream(user: dict, path: str, body: dict, session_id: Optional[
             stream = resp.aiter_bytes()
             while True:
                 try:
-                    chunk = await _asyncio.wait_for(stream.__anext__(), timeout=15.0)
+                    async with _asyncio.timeout(15.0):
+                        chunk = await stream.__anext__()
                     yield chunk
-                except _asyncio.TimeoutError:
+                except TimeoutError:
                     yield KEEPALIVE
                 except StopAsyncIteration:
                     break
