@@ -55,7 +55,17 @@ class GatewayManager:
         self._reaper_task: Optional[asyncio.Task[None]] = None
 
     async def start(self) -> None:
-        """Start the background reaper task."""
+        """Start the background reaper task and clean stale lock files."""
+        # Clean stale gateway locks from previous runs
+        hermes_home = os.environ.get("HERMES_HOME", "/home/ec2-user/.hermes")
+        profiles_dir = Path(hermes_home) / "profiles"
+        if profiles_dir.exists():
+            for profile_dir in profiles_dir.iterdir():
+                for f in ["gateway.lock", "gateway.pid"]:
+                    lock_file = profile_dir / f
+                    if lock_file.exists():
+                        lock_file.unlink()
+                        logger.info(f"Cleaned stale {f} in {profile_dir.name}")
         if self._reaper_task is None:
             self._reaper_task = asyncio.create_task(self._reaper_loop())
             logger.info("GatewayManager reaper started")
@@ -121,7 +131,7 @@ class GatewayManager:
             logger.warning(f"Profile .env not found: {profile_env}")
 
         proc = await asyncio.create_subprocess_exec(
-            "hermes", "-p", profile, "gateway", "run",
+            "hermes", "-p", profile, "gateway", "run", "--replace",
             env=env,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
