@@ -71,19 +71,26 @@ async def _proxy_get(user: dict, path: str, params: Optional[dict] = None) -> di
         return resp.json()
 
 
-async def _proxy_stream(user: dict, path: str, body: dict) -> AsyncGenerator[bytes, None]:
+async def _proxy_stream(user: dict, path: str, body: dict, session_id: Optional[str] = None) -> AsyncGenerator[bytes, None]:
     """Proxy a streaming POST request to the user's Hermes gateway.
 
     Reads the SSE stream from the gateway and yields raw bytes to the client.
+    If session_id is provided, passes it as X-Hermes-Session-Id header for context continuity.
     """
     info = await _get_gateway_info(user)
     url = f"{info['base_url']}{path}"
     headers = {"Authorization": f"Bearer {info['api_key']}"} if info["api_key"] else {}
+    if session_id:
+        headers["X-Hermes-Session-Id"] = session_id
     async with httpx.AsyncClient(timeout=120.0) as client:
         async with client.stream("POST", url, json=body, headers=headers) as resp:
             if resp.status_code >= 400:
                 error_body = await resp.aread()
                 raise HTTPException(status_code=resp.status_code, detail=error_body.decode(errors="replace"))
+            # Extract session_id from gateway response headers
+            gw_session_id = resp.headers.get("X-Hermes-Session-Id", "")
+            if gw_session_id:
+                yield f"data: {{\"session_id\": \"{gw_session_id}\"}}\n\n".encode()
             async for chunk in resp.aiter_bytes():
                 yield chunk
 
@@ -131,7 +138,10 @@ async def chat(request: Request, user: dict = Depends(get_current_user)):
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid JSON body")
 
-    # Support both OpenAI-compatible and simple message formats
+    # Extract session_id from the original request for context continuity
+    frontend_session_id = body.pop("session_id", None) if "message" in body and "messages" not in body else body.get("session_id")
+    if frontend_session_id and "message" in body and "messages" not in body:
+        pass  # already popped
     # Simple format: {"message": "hello"}  -> convert to chat completions
     if "message" in body and "messages" not in body:
         body = {
@@ -147,7 +157,7 @@ async def chat(request: Request, user: dict = Depends(get_current_user)):
 
     async def event_generator() -> AsyncGenerator[str, None]:
         try:
-            async for chunk in _proxy_stream(user, "/v1/chat/completions", body):
+            async for chunk in _proxy_stream(user, "/v1/chat/completions", body, frontend_session_id):
                 yield chunk.decode(errors="replace")
         except HTTPException:
             raise
