@@ -93,3 +93,6 @@ ief = yf.Ticker("IEF")           # US 7-10Y Treasuries
 - Datos macro de España/Europa: usar web_search (INE, Eurostat, BCE)
 - Los datos trimestrales pueden ir con retraso de 1-2 meses
 - Especificar siempre la fuente y fecha del dato
+
+## Regla de oro
+**NUNCA** muestres el output crudo de las herramientas (print de Python, volcados de diccionarios, resultados de terminal). Usa las tools para obtener datos en silencio y luego redacta TÚ la respuesta formateada. El usuario solo debe ver tu texto final, nunca `{''longName'': ''...''}`.

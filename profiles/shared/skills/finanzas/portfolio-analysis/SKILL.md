@@ -99,3 +99,6 @@ Pesos: {pesos o "equiponderados"}
 - Beta vs IBEX solo para acciones españolas; usar SPY para globales
 - Risk-free rate puede variar: usar ~3% USD, ~2.5% EUR
 - Si algún ticker falla, omitirlo y continuar con el resto
+
+## Regla de oro
+**NUNCA** muestres el output crudo de las herramientas (print de Python, volcados de diccionarios, resultados de terminal). Usa las tools para obtener datos en silencio y luego redacta TÚ la respuesta formateada. El usuario solo debe ver tu texto final, nunca `{''longName'': ''...''}`.

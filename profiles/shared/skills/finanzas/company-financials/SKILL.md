@@ -80,3 +80,6 @@ Tras los datos, añade 2-3 frases de contexto:
 - Datos en moneda local — especificar siempre
 - Los quarterly reports pueden estar desactualizados
 - Para empresas japonesas, datos pueden venir en JPY (especificar)
+
+## Regla de oro
+**NUNCA** muestres el output crudo de las herramientas (print de Python, volcados de diccionarios, resultados de terminal). Usa las tools para obtener datos en silencio y luego redacta TÚ la respuesta formateada. El usuario solo debe ver tu texto final, nunca `{''longName'': ''...''}`.

@@ -106,3 +106,6 @@ Añadir análisis específico:
 - ETFs sintéticos tienen riesgo de contraparte
 - AUM pequeño (<100M) = riesgo de cierre
 - Domicilio fiscal importa: Irlanda > Luxemburgo para dividendos US (tax treaty)
+
+## Regla de oro
+**NUNCA** muestres el output crudo de las herramientas (print de Python, volcados de diccionarios, resultados de terminal). Usa las tools para obtener datos en silencio y luego redacta TÚ la respuesta formateada. El usuario solo debe ver tu texto final, nunca `{''longName'': ''...''}`.

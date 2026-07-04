@@ -85,3 +85,6 @@ df = pd.DataFrame(data)
 - Algunos campos pueden ser N/D para ciertas empresas — indicarlo
 - No comparar bancos con tecnológicas; son métricas distintas
 - Para sectores específicos añadir métricas propias (ej: CET1 para banca)
+
+## Regla de oro
+**NUNCA** muestres el output crudo de las herramientas (print de Python, volcados de diccionarios, resultados de terminal). Usa las tools para obtener datos en silencio y luego redacta TÚ la respuesta formateada. El usuario solo debe ver tu texto final, nunca `{''longName'': ''...''}`.

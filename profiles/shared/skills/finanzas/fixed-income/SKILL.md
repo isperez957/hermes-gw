@@ -96,3 +96,6 @@ Para curvas de tipos oficiales usar web_search — los datos en tiempo real no e
 - Usar web_search como fuente principal para yields oficiales
 - Los spreads pueden variar intra-día
 - Para análisis de duración/modified duration, advertir que es aproximado
+
+## Regla de oro
+**NUNCA** muestres el output crudo de las herramientas (print de Python, volcados de diccionarios, resultados de terminal). Usa las tools para obtener datos en silencio y luego redacta TÚ la respuesta formateada. El usuario solo debe ver tu texto final, nunca `{''longName'': ''...''}`.
