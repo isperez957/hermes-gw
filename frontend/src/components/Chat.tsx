@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   listSessions,
   getMessages,
-  createSession,
   sendMessage,
   Session,
   Message,
@@ -72,17 +71,13 @@ export function Chat() {
     setSidebarOpen(false);
   };
 
-  const handleNewChat = async () => {
-    try {
-      const session = await createSession();
-      setSessions((prev) => [session, ...prev]);
-      setActiveSessionId(session.id);
-      setMessages([]);
-      setStreamContent('');
-      setStreaming(false);
-    } catch (err) {
-      console.error('Failed to create session:', err);
-    }
+  const handleNewChat = () => {
+    // Sessions are created implicitly by the first chat message —
+    // just reset local state. No server round-trip needed.
+    setActiveSessionId(null);
+    setMessages([]);
+    setStreamContent('');
+    setStreaming(false);
   };
 
   const handleSend = useCallback(async () => {
