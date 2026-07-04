@@ -61,7 +61,15 @@ export function Chat() {
     try {
       setLoadingMessages(true);
       const data = await getMessages(sessionId);
-      setMessages(data);
+      // Clean tool output noise from server messages
+      const clean = (Array.isArray(data) ? data : []).map((msg: Message) => ({
+        ...msg,
+        content: (msg.content || '')
+          .replace(/\n?\s*\{[^}]*"(?:output|exit_code|bytes_written|files_modified|resolved_path|lint|dirs_created|error|skill_dir|linked_files|usage_hint)"[\s\S]*?\}\s*\n?/g, '\n')
+          .replace(/\n{3,}/g, '\n\n')
+          .trim() || msg.content
+      }));
+      setMessages(clean);
     } catch (err) {
       console.error('Failed to load messages:', err);
     } finally {
@@ -216,11 +224,6 @@ export function Chat() {
       setMessages((prev) => [...prev, assistantMsg]);
       setStreamContent('');
       setStreamReasoning('');
-
-      // Reload messages from server for this session
-      if (newSessionId) {
-        loadMessages(newSessionId);
-      }
     } catch (err) {
       if ((err as Error).name === 'AbortError') {
         return;
