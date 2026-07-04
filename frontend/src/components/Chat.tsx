@@ -200,14 +200,18 @@ export function Chat() {
         }
       }
 
-      // Add assistant message using refs for final content
+      // Add assistant message using refs for final content, cleaning tool output noise
       const finalContent = streamContentRef.current || buffer;
+      const cleanContent = finalContent
+        .replace(/\n?\s*\{.*"(?:bytes_written|output|exit_code|files_modified|resolved_path|lint|dirs_created)".*\}\s*\n?/g, '\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
       const finalReasoning = streamReasoningRef.current || undefined;
       const assistantMsg: Message = {
         id: `temp-${Date.now()}-assistant`,
         session_id: newSessionId || '',
         role: 'assistant',
-        content: finalContent || '(empty response)',
+        content: cleanContent || finalContent || '(empty response)',
         reasoning: finalReasoning,
         created_at: new Date().toISOString(),
       };
@@ -349,7 +353,9 @@ export function Chat() {
               {streaming && (
                 <div className="message-row assistant">
                   <div className="message-bubble streaming-cursor">
-                    {streamContent || (
+                    {streamContent ? (
+                      <span>Pensando...</span>
+                    ) : (
                       <div className="loading-indicator">
                         <div className="dot" />
                         <div className="dot" />
