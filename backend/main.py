@@ -138,10 +138,12 @@ async def chat(request: Request, user: dict = Depends(get_current_user)):
             "model": body.get("model", "hermes"),
             "messages": [{"role": "user", "content": body["message"]}],
             "stream": True,
+            "reasoning_effort": body.get("reasoning_effort", "medium"),
         }
     else:
         body.setdefault("stream", True)
         body.setdefault("model", "hermes")
+        body.setdefault("reasoning_effort", "medium")
 
     async def event_generator() -> AsyncGenerator[str, None]:
         try:
