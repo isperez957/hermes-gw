@@ -349,19 +349,13 @@ export function Chat() {
               {streaming && (
                 <div className="message-row assistant">
                   <div className="message-bubble streaming-cursor">
-                    {streamReasoning && (
-                      <details open className="reasoning-block">
-                        <summary className="reasoning-summary">🧠 Pensando...</summary>
-                        <div className="reasoning-content">{streamReasoning}</div>
-                      </details>
-                    )}
-                    {streamContent || (!streamReasoning && (
+                    {streamContent || (
                       <div className="loading-indicator">
                         <div className="dot" />
                         <div className="dot" />
                         <div className="dot" />
                       </div>
-                    ))}
+                    )}
                   </div>
                 </div>
               )}
