@@ -1,0 +1,15 @@
+agent:
+  reasoning_effort: medium
+mcp_servers:
+  sqlite:
+    args:
+    - --db-path
+    - /opt/hermes-gw/sample_company.db
+    command: mcp-server-sqlite
+    transport: stdio
+model:
+  base_url: https://api.deepseek.com/v1
+  default: deepseek-v4-pro
+  provider: deepseek
+reasoning:
+  mode: show

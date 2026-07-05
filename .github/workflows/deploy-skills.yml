@@ -1,13 +1,13 @@
-name: Deploy Shared Skills
+name: Deploy Shared Profiles
 
 on:
   push:
     paths:
-      - 'profiles/shared/skills/**'
+      - 'profiles/shared/**'
   workflow_dispatch:
 
 jobs:
-  deploy-skills:
+  deploy-profiles:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -21,20 +21,15 @@ jobs:
           role-to-assume: arn:aws:iam::649091762015:role/terraform-ci-oidc
           aws-region: eu-west-1
 
-      - name: Deploy skills to EC2
+      - name: Deploy to EC2
         env:
           INSTANCE_ID: i-0c0f8dd5d194ceaf2
         run: |
-          if [ ! -d "profiles/shared/skills" ]; then
-            echo "No shared skills to deploy"
-            exit 0
-          fi
+          echo "Files to deploy:"
+          find profiles/shared -type f -exec echo "  - {}" \;
 
-          echo "Skills to deploy:"
-          find profiles/shared/skills -name "SKILL.md" -exec echo "  - {}" \;
-
-          # Build a self-contained base64 script: tarball + deploy logic
-          TARBALL_B64=$(tar cz profiles/shared/skills | base64 -w0)
+          # Pack everything as base64 tarball
+          TARBALL_B64=$(tar cz profiles/shared 2>/dev/null | base64 -w0)
 
           python3 -c "
           import subprocess, base64, json, os, time
@@ -43,18 +38,47 @@ jobs:
 
           script = f'''#!/bin/bash
           set -e
-          echo === Deploying shared skills ===
+          echo === Deploying shared profiles ===
           cd /tmp
           echo '{tarball}' | base64 -d | tar xz
-          find profiles/shared/skills -name SKILL.md -exec echo '  {{}}' \\;
-          for p in user-isaac user-miguel user-pablo; do
-            d=/home/ec2-user/.hermes/profiles/\$p/skills
-            mkdir -p \$d
-            echo \"  -> \$p\"
-            cp -rn profiles/shared/skills/* \$d/
-          done
+
+          # --- Deploy skills (keep existing, overwrite shared) ---
+          if [ -d profiles/shared/skills ]; then
+            echo ''
+            echo '--- Skills ---'
+            find profiles/shared/skills -name SKILL.md -exec echo '  {{}}' \\;
+            for p in user-isaac user-miguel user-pablo; do
+              d=/home/ec2-user/.hermes/profiles/\\$p/skills
+              mkdir -p \\$d
+              echo \"  -> \\$p\"
+              cp -rn profiles/shared/skills/* \\$d/
+            done
+          fi
+
+          # --- Deploy config.yaml to all profiles ---
+          if [ -f profiles/shared/config.yaml ]; then
+            echo ''
+            echo '--- Config ---'
+            for p in user-isaac user-miguel user-pablo; do
+              cp profiles/shared/config.yaml /home/ec2-user/.hermes/profiles/\\$p/config.yaml
+              echo \"  -> \\$p/config.yaml\"
+            done
+          fi
+
+          # --- Deploy sample DB ---
+          if [ -f profiles/shared/sample_company.db ]; then
+            echo ''
+            echo '--- Sample DB ---'
+            mkdir -p /opt/hermes-gw
+            cp profiles/shared/sample_company.db /opt/hermes-gw/sample_company.db
+            echo '  -> /opt/hermes-gw/sample_company.db'
+          fi
+
           rm -rf profiles
-          echo === Done ===
+          echo ''
+          echo '=== Deploy complete, restarting orchestrator ==='
+          docker restart hermes-orchestrator
+          echo 'Done'
           '''
 
           script_b64 = base64.b64encode(script.encode()).decode()
@@ -63,7 +87,7 @@ jobs:
               'aws', 'ssm', 'send-command',
               '--instance-ids', os.environ['INSTANCE_ID'],
               '--document-name', 'AWS-RunShellScript',
-              '--comment', 'Deploy shared skills',
+              '--comment', 'Deploy shared profiles',
               '--parameters', json.dumps({'commands': [f'echo {script_b64} | base64 -d | bash']}),
               '--query', 'Command.CommandId', '--output', 'text'
           ], capture_output=True, text=True, check=True).stdout.strip()
@@ -81,7 +105,7 @@ jobs:
               status = inv.get('Status', 'Unknown')
               print(f'  [{i+1}] {status}')
               if status == 'Success':
-                  print('OK: Skills deployed')
+                  print('OK: Profiles deployed')
                   exit(0)
               elif status in ('Failed', 'TimedOut'):
                   output = inv.get('CommandPlugins', [{}])[0].get('Output', '')
