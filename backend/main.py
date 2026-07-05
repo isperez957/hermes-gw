@@ -104,32 +104,8 @@ async def _proxy_stream(user: dict, path: str, body: dict, session_id: Optional[
             gw_session_id = resp.headers.get("X-Hermes-Session-Id", "")
             if gw_session_id:
                 yield f"data: {{\"session_id\": \"{gw_session_id}\"}}\n\n".encode()
-            # Stream chunks with keepalive injection via queue
-            KEEPALIVE = b": keepalive\n\n"
-            chunk_queue: _asyncio.Queue = _asyncio.Queue()
-            
-            async def _read_stream():
-                try:
-                    async for chunk in resp.aiter_bytes():
-                        await chunk_queue.put(chunk)
-                except Exception:
-                    pass
-                finally:
-                    await chunk_queue.put(None)  # sentinel
-            
-            read_task = _asyncio.ensure_future(_read_stream())
-            
-            while True:
-                get_task = _asyncio.ensure_future(chunk_queue.get())
-                done, _ = await _asyncio.wait([get_task], timeout=15.0)
-                if done:
-                    chunk = get_task.result()
-                    if chunk is None:
-                        break
-                    yield chunk
-                else:
-                    get_task.cancel()
-                    yield KEEPALIVE
+            async for chunk in resp.aiter_bytes():
+                yield chunk
 
 
 # ---------------------------------------------------------------------------
