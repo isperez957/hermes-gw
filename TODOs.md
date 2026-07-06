@@ -95,6 +95,95 @@
 - [ ] Última conexión
 - [ ] Créditos/uso restante (si se implementa billing)
 
+### Session & Conversation Management
+
+- [ ] Lista de conversaciones en sidebar (ya funciona vía `/api/sessions`)
+  - Scroll infinito / paginación
+  - Search/filtro por título o fecha
+- [ ] Borrar conversaciones (individual + bulk)
+  - Soft delete: archivar primero, borrado real tras 30 días
+  - Confirmación: "¿Seguro que quieres borrar esta conversación?"
+  - Ya existen los endpoints: `DELETE /api/sessions/{id}` + `POST /api/sessions/bulk-delete`
+- [ ] Renombrar conversaciones (doble click en el título)
+- [ ] Pin/star conversaciones importantes
+- [ ] Exportar conversación a Markdown, PDF o JSON
+  - Ya existe `GET /api/sessions/{id}/export` → JSONL
+- [ ] Compartir conversación (link público de solo lectura, opcional)
+- [ ] Estadísticas de uso personal: chats/día, tools usadas, tokens consumidos
+
+### File Upload & Analysis
+
+- [ ] Drag & drop de archivos en el chat
+  - Tipos: PDF, Excel (.xlsx), CSV, imágenes (.png/.jpg), Word (.docx)
+  - Límite: 10MB por archivo, máx 5 archivos simultáneos
+- [ ] Procesamiento server-side
+  - PDF: extraer texto con `marker-pdf` o `pymupdf` (skills existentes)
+  - Excel/CSV: parsear con pandas, mostrar preview de 10 filas
+  - Imágenes: enviar al modelo con visión (si el modelo lo soporta)
+- [ ] Análisis del contenido del archivo
+  - "Analiza este PDF de resultados trimestrales de Inditex"
+  - "Dame un resumen de este Excel de gastos"
+  - "¿Qué dice esta factura?"
+- [ ] Seguridad
+  - Scan de virus (ClamAV en el backend)
+  - Archivos NO se guardan permanentemente — se borran tras la sesión
+  - Nunca enviar archivos con PII a modelos externos sin anonimizar
+
+### Email Integration
+
+- [ ] Enviar conversación por email
+  - "Envíame este análisis a isaac@gmail.com"
+  - Formato: Markdown renderizado en el cuerpo, JSON adjunto
+- [ ] Resumen diario/semanal por email
+  - "Cada lunes a las 9am, envíame un resumen de mercados"
+  - Usar cron jobs de Hermes + skill de email (himalaya)
+- [ ] Alertas por email
+  - "Avísame si el IBEX 35 cae más del 3% en un día"
+  - "Avísame cuando Inditex publique resultados"
+- [ ] Email → chat (responder desde el email)
+  - "Reenvíame este email y respóndelo por mí"
+
+### Write Access & Export
+
+- [ ] Guardar respuestas en Obsidian/Notion
+  - "Guarda este análisis en mi vault de Obsidian"
+  - "Crea una página en Notion con este portfolio"
+- [ ] Exportar datos a Google Sheets
+  - "Pon esta tabla de cotizaciones en mi Google Sheet de seguimiento"
+- [ ] Generar documentos
+  - PowerPoint con análisis financiero (skill ya existente)
+  - PDF con informe de cartera (weasyprint/reportlab)
+  - Excel con datos de mercado (openpyxl)
+- [ ] Acciones con confirmación
+  - Toda operación de escritura requiere confirmación explícita del usuario
+  - Audit log de qué se escribió, dónde y cuándo
+
+### Generic UX Improvements
+
+- [ ] Dark/light mode (detectar preferencia del sistema)
+- [ ] Atajos de teclado
+  - `Ctrl+Enter` → enviar mensaje
+  - `Ctrl+K` → buscar conversaciones
+  - `Ctrl+N` → nueva conversación
+  - `Esc` → cancelar respuesta en curso
+- [ ] Markdown rendering en las respuestas
+  - Tablas, listas, código, links
+  - Sintaxis highlighting para bloques de código
+- [ ] Thumbs up/down en respuestas (feedback loop)
+- [ ] Streaming indicator
+  - "Pensando..." / "Buscando datos..." / "Escribiendo..."
+  - Progress bar o dots animados mientras se ejecutan tools
+- [ ] Tool visibility
+  - Mostrar qué tools está usando el agente (collapsible)
+  - "Buscando cotización de SAN.MC en Yahoo Finance..."
+  - "Consultando base de datos SQLite..."
+- [ ] Copiar mensaje al portapapeles (botón en cada respuesta)
+- [ ] Regenerar respuesta (mismo prompt, nueva respuesta)
+- [ ] Editar mensaje enviado y reenviar
+- [ ] Soporte mobile-first / responsive
+- [ ] PWA (instalable como app en iOS/Android)
+- [ ] Notificaciones push cuando termina una consulta larga
+
 ---
 
 ## 5. Endurance / Resiliencia
