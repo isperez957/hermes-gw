@@ -306,3 +306,97 @@
 - [ ] Dataset de prompts reales
   - Registrar prompts de usuarios (anonimizados) para mejorar el test set
   - Feedback loop: "¿Fue útil esta respuesta?" → entrenar el test set
+
+---
+
+## 8. Observability & Audit
+
+### Prompt & Response Logging
+
+- [ ] Log estructurado de cada interacción
+  - `timestamp`, `user_id`, `session_id`, `model`
+  - `prompt_text`, `prompt_tokens`, `output_tokens`
+  - `tools_invoked` (lista), `tool_call_count`, `tool_duration_ms`
+  - `total_duration_ms`, `status` (success / error / timeout)
+  - `error_type`, `error_message` (si falla)
+  - `input_has_pii` (booleano, tras pasar Presidio)
+- [ ] Almacenamiento
+  - Opción A: CloudWatch Logs (estructurado JSON, barato, ya integrado)
+  - Opción B: S3 + Athena (consultas SQL, más flexible)
+  - Opción C: Elasticsearch/OpenSearch (dashboards ricos, más caro)
+- [ ] Retención configurable
+  - Logs detallados: 90 días
+  - Métricas agregadas: 2 años
+  - GDPR: derecho al olvido → borrar logs de un usuario bajo demanda
+
+### Dashboards de observabilidad
+
+- [ ] Dashboard de tráfico
+  - Requests/minuto, requests/hora, requests/día
+  - Breakdown por usuario, por modelo, por perfil de riesgo
+  - Pico de uso (hora del día, día de la semana)
+- [ ] Dashboard de latencia
+  - p50, p95, p99 por modelo y por tipo de consulta
+  - Time-to-first-token (TTFT)
+  - Tiempo en tools vs tiempo en generación de texto
+  - Correlación: más tools = más latencia
+- [ ] Dashboard de errores
+  - Tasa de error por modelo, por tipo (timeout, API error, tool crash)
+  - Errores 429 (rate limit) del provider
+  - Gateway spawn failures
+- [ ] Dashboard de costes
+  - Tokens consumidos por usuario/día/semana
+  - Coste estimado en USD (según pricing del modelo)
+  - Proyección mensual vs presupuesto
+- [ ] Dashboard de calidad
+  - Thumbs up/down ratio por modelo y por tipo de consulta
+  - Tasa de abandono (usuario cierra antes de que termine)
+  - Prompts repetidos (usuario no quedó satisfecho y pregunta otra vez)
+
+### Auditoría de prompts
+
+- [ ] Panel de administrador para revisar prompts
+  - Búsqueda full-text por palabra clave
+  - Filtro por usuario, fecha, modelo, status
+  - Ver prompt original + respuesta completa
+- [ ] Detección de anomalías
+  - Prompts que inyectan instrucciones maliciosas (jailbreak, prompt injection)
+  - Usuario que de repente triplica su consumo de tokens
+  - Patrones de abuso: mismo prompt 50 veces, scraping
+- [ ] Alertas de auditoría
+  - Prompt con PII no detectado por Presidio → alerta al admin
+  - Intento de jailbreak detectado → flag + log
+  - Usuario excede su cuota de tokens → notificar
+- [ ] Compliance
+  - Export de auditoría para certificación (ISO 27001, SOC 2)
+  - Registro de quién accedió al panel de auditoría y qué hizo
+  - Inmutabilidad: logs no se pueden modificar ni borrar (S3 Object Lock)
+
+### Tracing distribuido
+
+- [ ] Trace ID único por request (end-to-end)
+  - CloudFront → ALB → Orchestrator → Gateway → LLM API → tools → respuesta
+  - Cada paso registra su duración y status
+- [ ] OpenTelemetry instrumentation
+  - Auto-instrumentación en FastAPI (orchestrator)
+  - Manual spans en GatewayManager (spawn, health check, proxy)
+  - Export a AWS X-Ray o Grafana Tempo
+- [ ] Waterfall view
+  - "Esta consulta tardó 45s: 2s auth, 5s gateway spawn, 30s LLM, 8s tools"
+
+### Alertas
+
+- [ ] Canales de alerta
+  - Email (admin@)
+  - Slack / Discord / Teams
+  - PagerDuty para críticas
+- [ ] Reglas de alerta
+  - Tasa de error > 5% en ventana de 5 minutos
+  - Latencia p95 > 120s en ventana de 15 minutos
+  - Gateway pool a 80% de capacidad
+  - Disco > 85%
+  - Provider API no responde (DeepSeek down)
+  - Coste diario > presupuesto × 1.5
+- [ ] Silenciamiento
+  - Mantenimiento programado → silence window
+  - Alerta repetida → agrupar, no spamear
