@@ -107,6 +107,11 @@ class GatewayManager:
             if gw is not None:
                 await self._kill_gateway(user_id, gw)
 
+            # Reset port counter if no gateways are alive — prevents unbounded
+            # port creep after a cascade of failed spawns (e.g. stale locks).
+            if not self._gateways:
+                self._next_port = GATEWAY_BASE_PORT
+
             port = self._next_port
             self._next_port += 1
             gw = await self._spawn_gateway(profile, port)
@@ -114,10 +119,24 @@ class GatewayManager:
             logger.info(f"Gateway spawned for user={user_id} profile={profile} on port={port}")
             return port
 
+    def _clean_profile_locks(self, profile: str) -> None:
+        """Remove stale gateway.lock and gateway.pid for a profile."""
+        hermes_home = os.environ.get("HERMES_HOME", "/home/ec2-user/.hermes")
+        for f in ["gateway.lock", "gateway.pid"]:
+            lock_file = Path(hermes_home) / "profiles" / profile / f
+            if lock_file.exists():
+                lock_file.unlink()
+                logger.info(f"Cleaned stale {f} in profile {profile}")
+
     async def _spawn_gateway(self, profile: str, port: int) -> Gateway:
         """Spawn a hermes gateway process and wait for it to become healthy."""
         env = os.environ.copy()
         env["API_SERVER_PORT"] = str(port)
+
+        # Clean stale locks before spawning — a previous gateway may have
+        # died leaving lock files behind, which blocks future spawns even
+        # with --replace on the same port.
+        self._clean_profile_locks(profile)
 
         # Read API_SERVER_KEY from profile's .env
         hermes_home = os.environ.get("HERMES_HOME", "/home/ec2-user/.hermes")
@@ -156,12 +175,7 @@ class GatewayManager:
             f"within {STARTUP_GRACE_PERIOD}s. Stderr: {stderr_data.decode(errors='replace')[:500]}"
         )
         await self._kill_gateway("unknown", gw)
-        # Clean up stale lock files so next spawn doesn't need a new port
-        hermes_home = os.environ.get("HERMES_HOME", "/home/ec2-user/.hermes")
-        for f in ["gateway.lock", "gateway.pid"]:
-            lock_file = Path(hermes_home) / "profiles" / profile / f
-            if lock_file.exists():
-                lock_file.unlink()
+        self._clean_profile_locks(profile)
         raise RuntimeError(f"Gateway for profile {profile} failed to start on port {port}")
 
     async def _is_healthy(self, gw: Gateway) -> bool:
