@@ -68,6 +68,45 @@
   - Máximo N consultas complejas por minuto/usuario
   - Cola de prioridad: consultas simples primero
 
+### Output Guardrails — Formatting & Presentation
+
+- [ ] Formateo automático de tablas markdown → HTML renderizado
+  - Detectar tablas en el output del LLM (regex `| ... |`)
+  - Parsear a HTML `<table>` con clases CSS
+  - Columnas numéricas alineadas a la derecha
+  - Columnas de texto alineadas a la izquierda
+- [ ] Colores condicionales en tablas financieras
+  - Valores positivos → verde
+  - Valores negativos → rojo
+  - Variaciones > 5% → negrita
+  - Rules configurables por tipo de dato (%, €, $, bps)
+- [ ] Strip de markdown roto o incompleto
+  - Tablas mal formadas (columnas desiguales) → reparar o convertir a lista
+  - Código sin cerrar (\`\`\`) → auto-cerrar
+  - Links rotos → mostrar URL sin formatear
+- [ ] Formateo de números
+  - Monedas: 1234567.89 → 1.234.567,89 € (locale ES)
+  - Porcentajes: 0.0523 → +5,23%
+  - Notación científica → decimal
+  - Grandes números: 1500000000 → 1.500M / 1,5B
+- [ ] Truncado inteligente de outputs largos
+  - Respuestas > 500 líneas → "Mostrar más" colapsable
+  - Tablas > 20 filas → paginación (20 por página)
+- [ ] Sanitización de output antes del render
+  - Escapar HTML malicioso (XSS)
+  - Scripts injectados → stripped
+  - Emojis/unicode válidos → mantener, secuencias peligrosas → stripped
+- [ ] Modo "raw" toggle
+  - Botón para ver el markdown original sin procesar
+  - Útil para debugging o copiar a otro sistema
+- [ ] Resaltado de datos clave
+  - Tickers de bolsa → clickable (lleva a Yahoo Finance)
+  - Cifras importantes → badge o highlight sutil
+  - Fechas → tooltip con formato relativo ("hace 3 días")
+- [ ] Post-procesado server-side en el orchestrator
+  - El LLM devuelve markdown → el backend lo formatea antes del SSE
+  - Cache del formateo: misma respuesta no se reformatea dos veces
+
 ---
 
 ## 4. Language & UI Improvements
