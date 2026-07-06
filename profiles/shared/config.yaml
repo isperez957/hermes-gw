@@ -9,7 +9,7 @@ mcp_servers:
     transport: stdio
 model:
   base_url: https://api.deepseek.com/v1
-  default: deepseek-v4-pro
+  default: deepseek-v4-flash
   provider: deepseek
 reasoning:
   mode: show
