@@ -273,6 +273,33 @@
   - SEC EDGAR filings
   - CNMV filings (España)
   - Yahoo Finance → Bloomberg/Reuters si hay presupuesto
+- [ ] Press clippings / news monitoring
+  - Agregador de noticias financieras multi-fuente
+    - Fuentes: MarketWatch, FT, CNBC, Reuters, Bloomberg, Expansión, Cinco Días
+    - Evitar Google News RSS (encoding roto en español)
+  - Filtros por tema, empresa, sector, ticker
+    - "Noticias de hoy sobre bancos españoles"
+    - "¿Qué se dice de Inditex esta semana?"
+    - "Titulares del sector energético europeo"
+  - Resumen diario automatizado
+    - Cron job: cada mañana a las 8am, resumen de prensa financiera
+    - Formato: bullet points con titular + fuente + link + 1 frase de contexto
+    - Entregable: email, canal de Slack, o sesión de chat
+  - Alertas de noticias
+    - "Avísame si sale una noticia sobre Telefónica"
+    - "Alerta si hay movimientos regulatorios que afecten al sector bancario"
+    - Frecuencia configurable: instantánea, diaria, semanal
+  - Sentiment analysis
+    - Clasificar cada noticia: positiva/negativa/neutral
+    - Score de sentimiento por empresa a lo largo del tiempo
+    - Correlación noticias vs cotización: "¿Las malas noticias de BBVA están afectando al precio?"
+  - Archivo y búsqueda
+    - Histórico de noticias indexado (últimos 90 días)
+    - Búsqueda full-text: "noticias sobre dividendos de Inditex en 2025"
+    - Export de recortes a PDF o Notion
+  - Integración con RSS local
+    - Skill `blogwatcher` ya existe para monitorizar blogs/RSS
+    - Añadir fuentes financieras preconfiguradas
 - [ ] Marketplace de skills
   - Los usuarios pueden activar/desactivar skills desde el UI
   - Skills comunitarias (contribuciones externas)
